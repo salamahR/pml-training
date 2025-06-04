@@ -1,0 +1,78 @@
+---
+title: "Prediction Assignment - Practical Machine Learning"
+author: "Coursera_S"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this project, we use accelerometer data to predict the manner in which participants performed barbell lifts. The variable `classe` is the target.
+
+## Load Libraries
+
+```{r}
+packages <- c("caret", "randomForest", "dplyr", "e1071")
+install_if_missing <- function(p) if (!require(p, character.only = TRUE)) install.packages(p, dependencies = TRUE)
+invisible(lapply(packages, install_if_missing))
+
+library(caret)
+library(randomForest)
+library(dplyr)
+library(e1071)
+```
+
+## Load and Clean Data
+
+```{r}
+training <- read.csv("pml-training.csv", na.strings = c("NA", "", "#DIV/0!"))
+training <- training[, colSums(is.na(training)) == 0]
+training <- training %>%
+  select(-c(user_name, raw_timestamp_part_1, raw_timestamp_part_2, 
+            cvtd_timestamp, new_window, num_window, X))
+training$classe <- as.factor(training$classe)
+```
+
+## Data Partitioning
+
+```{r}
+set.seed(1234)
+inTrain <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+trainData <- training[inTrain, ]
+testData  <- training[-inTrain, ]
+```
+
+## Model Training
+
+```{r}
+set.seed(1234)
+control <- trainControl(method = "cv", number = 5)
+modelFit <- train(classe ~ ., data = trainData, method = "rf", trControl = control)
+```
+
+## Model Evaluation
+
+```{r}
+predictions <- predict(modelFit, newdata = testData)
+confusionMatrix(predictions, testData$classe)
+```
+
+## Final Predictions (Optional)
+
+```{r eval=FALSE}
+testing <- read.csv("pml-training.csv", na.strings = c("NA", "", "#DIV/0!"))
+testing <- testing[, colSums(is.na(testing)) == 0]
+testing <- testing %>%
+  select(-c(user_name, raw_timestamp_part_1, raw_timestamp_part_2, 
+            cvtd_timestamp, new_window, num_window, X))
+final_predictions <- predict(modelFit, newdata = testing)
+final_predictions
+```
+
+## Conclusion
+
+We trained a Random Forest model using 5-fold cross-validation. The model shows high accuracy in predicting the manner in which exercises were performed. The `classe` variable is predicted with high confidence.
